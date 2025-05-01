@@ -9,6 +9,9 @@ GUI events. It is assumed that the robot has been set up using
 the original Main.py client software.
 """
 
+import sys
+sys.path.append("../Server")
+
 from flask import Flask, request, jsonify, g, send_file
 from Video import *
 from Command import COMMAND as cmd
@@ -40,9 +43,9 @@ class ClientService:
         self.video_timer_thread = None
         self.instruction_thread = None
         self.connected = False
-        self.distance = '0cm'
-        self.pinch = False
-        self.drop = False
+        self.distance = '0.00cm'
+        self.arm_angle = 150
+        self.grapple_angle = 90
 
 
     def receive_instructions(self):
@@ -56,18 +59,13 @@ class ClientService:
                 break
             else:
                 cmdArray = Alldata.split('\n')
-                if cmdArray[-1] != '':
+                if len(cmdArray) > 1 and cmdArray[-1] != '':
                     restCmd = cmdArray[-1]
                     cmdArray = cmdArray[:-1]
             for oneCmd in cmdArray:
                 message = oneCmd.split('#')
                 if cmd.CMD_SONIC in message:
-                    self.distance = f'{message[1]}cm'
-                elif cmd.CMD_ACTION in message:
-                    if message[1] == '10':
-                        self.pinch = False
-                    elif message[1] == '20':
-                        self.drop = False
+                    self.distance = message[1]
 
 
     # Function to enable image input periodically
@@ -147,22 +145,6 @@ def disconnect_robot():
         return jsonify({'status': 'Disconnected'}), 200
 
 
-# Endpoint to adjust speed (2 <= speed <= 10; 8 by default)
-@app.route('/speed', methods=['POST'])
-@app.route('/speed/<string:value>', methods=['POST'])
-def adjust_speed(value=None):
-    if value is None:
-        value = DEFAULT_MOVE_SPEED
-    g.service.move_speed = value
-    return jsonify({'status': 'Speed set', 'speed': int(value)}), 200
-
-
-# Endpoint to get the speed
-@app.route('/speed', methods=['GET'])
-def get_speed():
-    return jsonify({'speed': int(g.service.move_speed)}), 200
-
-
 # End point to move or stop
 @app.route('/stop', methods=['POST'])
 @app.route('/motor', methods=['POST'])
@@ -171,9 +153,7 @@ def motor(left=None, right=None):
     if left is None:
         left = '0'
         right = '0'
-    left_speed = int(left) * int(g.service.move_speed) * 20
-    right_speed = int(right) * int(g.service.move_speed) * 20
-    command = cmd.CMD_MOTOR + f'#{left_speed}#{right_speed}\n'
+    command = cmd.CMD_MOTOR + f'#{left}#{right}\n'
     g.service.client.sendData(command)
     return jsonify({
         'status': 'Moving',
@@ -184,56 +164,71 @@ def motor(left=None, right=None):
 
 # Endpoint to control the arm
 @app.route('/arm', methods=['POST'])
-@app.route('/arm/<string:angle>', methods=['POST'])
-def arm(angle=None):
-    if angle is None:
-        angle = '150'
-    command = cmd.CMD_SERVO + f'#1#{angle}\n'
-    g.service.client.sendData(command)
-    return jsonify({'status': 'Arm angle changed', 'angle': angle}), 200
+@app.route('/arm/<string:target>', methods=['POST'])
+def arm(target=None):
+    if target is None:
+        target = '150'
+    target_angle = int(target)
+    angle = g.service.arm_angle
+    if angle < target_angle:
+        while angle < target_angle:
+            command = cmd.CMD_SERVO + f'#1#{angle}\n'
+            g.service.client.sendData(command)
+            g.service.arm_angle = angle
+            angle += 4
+            time.sleep(0.1)
+    else:
+        while angle > target_angle:
+            command = cmd.CMD_SERVO + f'#1#{angle}\n'
+            g.service.client.sendData(command)
+            g.service.arm_angle = angle
+            angle -= 4
+            time.sleep(0.1)
+    return jsonify({'status': 'Arm angle changed', 'angle': g.service.arm_angle}), 200
 
 
 # Endpoint to control the grapple
 @app.route('/grapple', methods=['POST'])
-@app.route('/grapple/<string:angle>', methods=['POST'])
-def grapple(angle=None):
-    if angle is None:
-        angle = '0'
-    command = cmd.CMD_SERVO + f'#0#{angle}\n'
-    g.service.client.sendData(command)
-    return jsonify({'status': 'Grapple angle changed', 'angle': angle}), 200
+@app.route('/grapple/<string:target>', methods=['POST'])
+def grapple(target=None):
+    if target is None:
+        target = '90'
+    target_angle = int(target)
+    angle = g.service.grapple_angle
+    if angle < target_angle:
+        while angle < target_angle:
+            command = cmd.CMD_SERVO + f'#0#{angle}\n'
+            g.service.client.sendData(command)
+            g.service.grapple_angle = angle
+            angle += 4
+            time.sleep(0.1)
+    else:
+        while angle > target_angle:
+            command = cmd.CMD_SERVO + f'#0#{angle}\n'
+            g.service.client.sendData(command)
+            g.service.grapple_angle = angle
+            angle -= 4
+            time.sleep(0.1)
+    return jsonify({'status': 'Grapple angle changed', 'angle': g.service.grapple_angle}), 200
 
 
 # Endpoint for sonic
 @app.route('/sonic', methods=['GET'])
 def sonic():
-    command = cmd.CMD_SONIC + '\n'
-    g.service.client.sendData(command)
-    time.sleep(0.1)
-    distance = g.service.distance
+    distance = f'{g.service.distance}cm'
     return jsonify({'status': 'Sonic data requested', 'distance': distance}), 200
 
 
-# Endpoint to set LED mode (0 : off, 1 to 5)
-@app.route('/led/mode', methods=['POST'])
-@app.route('/led/mode/<string:value>', methods=['POST'])
-def set_led_mode(value=None):
-    if value is None:
-        value = '0'
-    command = cmd.CMD_LED_MOD + f'#{value}\n'
-    g.service.client.sendData(command)
-    return jsonify({'status': 'LED mode set', 'mode': int(value)}), 200
-
-
-# Endpoint to set LED color
-@app.route('/led/color', methods=['POST'])
-@app.route('/led/color/<string:red>/<string:green>/<string:blue>', methods=['POST'])
-def set_led_color(red=None, green=None, blue=None):
-    if red is None:
+# Endpoint to set LED mode and color (mode - 0 : off, 1 to 5)
+@app.route('/led', methods=['POST'])
+@app.route('/led/<string:mode>/<string:red>/<string:green>/<string:blue>', methods=['POST'])
+def set_led_color(mode=None, red=None, green=None, blue=None):
+    if mode is None:
+        mode = '0'
         red = '255'
         green = '255'
         blue = '255'
-    command = cmd.CMD_LED + f'#255#{red}#{green}#{blue}\n'
+    command = cmd.CMD_LED + f'#{mode}#{red}#{green}#{blue}#\n'
     g.service.client.sendData(command)
     return jsonify({
         'status': 'LED color set',
