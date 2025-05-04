@@ -1,4 +1,5 @@
 # Import necessary modules for ultrasonic sensor, motor control, servo control, and infrared sensor
+# Modified by Kenji Saito for Academy Camp projects : 2025-05-04
 from ultrasonic import Ultrasonic
 from motor import tankMotor
 from servo import Servo
@@ -74,42 +75,43 @@ class Car:
         distance = self.sonic.get_distance()
         # Read all infrared sensors
         infrared_value = self.infrared.read_all_infrared()
-        # print("distance:", distance, "infrared:", infrared_value)
+#        if infrared_value != 7:
+#            print("distance:", distance, "infrared:", infrared_value)
 
         # Control motor based on infrared sensor values
         if infrared_value == 2:
             self.motor.setMotorModel(1200, 1200)    # Move forward
-        elif infrared_value == 4:
-            self.motor.setMotorModel(-1500, 2500)   # Turn left
-        elif infrared_value == 6:
-            self.motor.setMotorModel(-2000, 4000)   # Turn left more sharply
         elif infrared_value == 1:
-            self.motor.setMotorModel(2500, -1500)   # Turn right
+            self.motor.setMotorModel(0, 1200)   # Turn left
         elif infrared_value == 3:
-            self.motor.setMotorModel(4000, -2000)   # Turn right more sharply
+            self.motor.setMotorModel(0, 1500)   # Turn left more sharply
+        elif infrared_value == 4:
+            self.motor.setMotorModel(1200, 0)   # Turn right
+        elif infrared_value == 6:
+            self.motor.setMotorModel(1500, 0)   # Turn right more sharply
         elif infrared_value == 7:
             self.motor.setMotorModel(0, 0)          # Stop
 
         # If distance is between 5.0 and 12.0 cm, perform clamp operations
-        if distance > 5.0 and distance <= 12.0:
-            self.motor.setMotorModel(0, 0)          # Stop motor
-            self.set_mode_clamp(1)                  # Set clamp mode to 1 (up)
-            while self.get_mode_clamp() == 1 and self.infrared_run_stop == False:
-                self.mode_clamp()                   # Perform clamp up operation
-            if self.infrared_run_stop == True:
-                self.motor.setMotorModel(0, 0)      # Stop motor if infrared run stop is True
-                return
-            self.motor.setMotorModel(-1500, 1500)   # Turn left
-            time.sleep(1.5)
-            self.motor.setMotorModel(0, 0)          # Stop motor
-            self.set_mode_clamp(2)                  # Set clamp mode to 2 (down)
-            while self.get_mode_clamp() == 2 and self.infrared_run_stop == False:
-                self.mode_clamp()                   # Perform clamp down operation
-            if self.infrared_run_stop == True:
-                self.motor.setMotorModel(0, 0)      # Stop motor if infrared run stop is True
-                return 
-            self.motor.setMotorModel(1500, -1500)   # Turn right
-            time.sleep(1.4)
+#        if distance > 5.0 and distance <= 12.0:
+#            self.motor.setMotorModel(0, 0)          # Stop motor
+#            self.set_mode_clamp(1)                  # Set clamp mode to 1 (up)
+#            while self.get_mode_clamp() == 1 and self.infrared_run_stop == False:
+#                self.mode_clamp()                   # Perform clamp up operation
+#            if self.infrared_run_stop == True:
+#                self.motor.setMotorModel(0, 0)      # Stop motor if infrared run stop is True
+#                return
+#            self.motor.setMotorModel(-1500, 1500)   # Turn left
+#            time.sleep(1.5)
+#            self.motor.setMotorModel(0, 0)          # Stop motor
+#            self.set_mode_clamp(2)                  # Set clamp mode to 2 (down)
+#            while self.get_mode_clamp() == 2 and self.infrared_run_stop == False:
+#                self.mode_clamp()                   # Perform clamp down operation
+#            if self.infrared_run_stop == True:
+#                self.motor.setMotorModel(0, 0)      # Stop motor if infrared run stop is True
+#                return
+#            self.motor.setMotorModel(1500, -1500)   # Turn right
+#            time.sleep(1.4)
 
     def mode_clamp_up(self):
         # Perform clamp up operation if clamp mode is 1

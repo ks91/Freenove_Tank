@@ -245,6 +245,20 @@ def get_image():
     return send_file(FILENAME_IMAGE, mimetype='image/jpeg')
 
 
+# Endpoint to set car mode
+@app.route('/mode', methods=['POST'])
+@app.route('/mode/<string:mode>', methods=['POST'])
+def set_mode(mode=None):
+    if mode is None:
+        mode = '0'
+    command = cmd.CMD_MODE + f'#{mode}\n'
+    g.service.client.sendData(command)
+    return jsonify({
+        'status': 'Car mode set',
+        'mode': int(mode)
+    }), 200
+
+
 @app.errorhandler(400)
 @app.errorhandler(404)
 @app.errorhandler(409)
