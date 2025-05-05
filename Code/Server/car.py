@@ -6,6 +6,10 @@ from servo import Servo
 from infrared import Infrared
 import time
 
+SIDE_ON_LEFT = -1
+SIDE_NONE = 0
+SIDE_ON_RIGHT = 1
+
 # Define the Car class to manage all components and functionalities
 class Car:
     def __init__(self):
@@ -14,6 +18,7 @@ class Car:
         self.sonic = None
         self.motor = None
         self.infrared = None
+        self.side = SIDE_NONE
         # Call the start method to initialize components
         self.start()
 
@@ -72,25 +77,44 @@ class Car:
     
     def mode_infrared(self):
         # Get distance from ultrasonic sensor
-        distance = self.sonic.get_distance()
+#        distance = self.sonic.get_distance()
         # Read all infrared sensors
         infrared_value = self.infrared.read_all_infrared()
 #        if infrared_value != 7:
 #            print("distance:", distance, "infrared:", infrared_value)
 
         # Control motor based on infrared sensor values
-        if infrared_value == 2:
-            self.motor.setMotorModel(1200, 1200)    # Move forward
+        if infrared_value == 0:
+            if self.side == SIDE_ON_LEFT:
+                self.motor.setMotorModel(0, 1000)
+            elif self.side == SIDE_ON_RIGHT:
+                self.motor.setMotorModel(1000, 0)
+        elif infrared_value == 2:
+            if self.side == SIDE_NONE:
+                self.motor.setMotorModel(1200, 1200)    # Move forward
+            elif self.side == SIDE_ON_LEFT:
+                self.motor.setMotorModel(1200, 700)
+            elif self.side == SIDE_ON_RIGHT:
+                self.motor.setMotorModel(700, 1200)
         elif infrared_value == 1:
-            self.motor.setMotorModel(0, 1200)   # Turn left
+            self.motor.setMotorModel(0, 1200)   # Turn right
+            time.sleep(0.2)
+            self.side = SIDE_ON_LEFT
         elif infrared_value == 3:
-            self.motor.setMotorModel(0, 1500)   # Turn left more sharply
+            self.motor.setMotorModel(0, 1500)   # Turn right more sharply
+            time.sleep(0.2)
+            self.side = SIDE_ON_LEFT
         elif infrared_value == 4:
-            self.motor.setMotorModel(1200, 0)   # Turn right
+            self.motor.setMotorModel(1200, 0)   # Turn left
+            time.sleep(0.2)
+            self.side = SIDE_ON_RIGHT
         elif infrared_value == 6:
-            self.motor.setMotorModel(1500, 0)   # Turn right more sharply
+            self.motor.setMotorModel(1500, 0)   # Turn left more sharply
+            time.sleep(0.2)
+            self.side = SIDE_ON_RIGHT
         elif infrared_value == 7:
             self.motor.setMotorModel(0, 0)          # Stop
+            self.side = SIDE_NONE
 
         # If distance is between 5.0 and 12.0 cm, perform clamp operations
 #        if distance > 5.0 and distance <= 12.0:

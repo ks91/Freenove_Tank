@@ -148,17 +148,17 @@ def disconnect_robot():
 # End point to move or stop
 @app.route('/stop', methods=['POST'])
 @app.route('/motor', methods=['POST'])
-@app.route('/motor/<string:left>/<string:right>', methods=['POST'])
-def motor(left=None, right=None):
-    if left is None:
-        left = '0'
+@app.route('/motor/<string:right>/<string:left>', methods=['POST'])
+def motor(right=None, left=None):
+    if right is None:
         right = '0'
-    command = cmd.CMD_MOTOR + f'#{left}#{right}\n'
+        left = '0'
+    command = cmd.CMD_MOTOR + f'#{right}#{left}\n'
     g.service.client.sendData(command)
     return jsonify({
         'status': 'Moving',
-        'left': int(left),
-        'right': int(right)
+        'right': int(right),
+        'left': int(left)
     }), 200
 
 
